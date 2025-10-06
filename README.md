@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # MyCity Resolve
 
 A Django-based civic engagement platform that connects citizens with city leaders to resolve community issues through a two-step verification process.
@@ -134,3 +135,6 @@ For production deployment:
 ## License
 
 This project is open source and available under the MIT License.
+=======
+# MyCity_Resolve
+>>>>>>> 4d178275348fb5535c15ad5a9e324250230f2149
