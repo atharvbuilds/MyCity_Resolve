@@ -1,0 +1,112 @@
+{% extends 'resolve/base.html' %}
+
+{% block title %}My Issues - MyCity Resolve{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-user text-primary"></i> My Issues
+    </h2>
+    <a href="{% url 'submit_issue' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Submit New Issue
+    </a>
+</div>
+
+{% if issues %}
+    <div class="row">
+        {% for issue in issues %}
+        <div class="col-lg-6 mb-4">
+            <div class="card issue-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">{{ issue.title }}</h5>
+                        <small class="text-muted">
+                            <i class="fas fa-calendar"></i> {{ issue.created_at|date:"M d, Y" }}
+                        </small>
+                    </div>
+                    <span class="badge 
+                        {% if issue.status == 'solved' %}bg-success
+                        {% elif issue.status == 'pending_confirm' %}bg-warning
+                        {% else %}bg-primary{% endif %} status-badge">
+                        {{ issue.get_status_display }}
+                    </span>
+                </div>
+                
+                {% if issue.image %}
+                <img src="{{ issue.image }}" class="card-img-top" alt="Issue image" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                
+                <div class="card-body">
+                    <p class="card-text">{{ issue.description }}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-user-tie"></i> Tagged: {{ issue.leader_tagged.name }}
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-flag"></i> {{ issue.flag_count }} flags
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                <a href="https://www.google.com/maps?q={{ issue.latitude }},{{ issue.longitude }}" 
+                                   target="_blank" class="text-decoration-none">
+                                    View Location
+                                </a>
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-clock"></i> Updated: {{ issue.updated_at|date:"M d, Y" }}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if issue.is_leader_resolved %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Leader Resolved
+                                </span>
+                            {% endif %}
+                            {% if issue.is_user_confirmed %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-double"></i> You Confirmed
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            {% if issue.is_leader_resolved and not issue.is_user_confirmed %}
+                            <a href="{% url 'user_confirm' issue.id %}" 
+                               class="btn btn-success">
+                                <i class="fas fa-check"></i> Confirm Resolved
+                            </a>
+                            {% elif issue.status == 'solved' %}
+                            <span class="badge bg-success fs-6">
+                                <i class="fas fa-trophy"></i> Completed!
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">No issues submitted yet</h4>
+        <p class="text-muted">Start by submitting your first community issue!</p>
+        <a href="{% url 'submit_issue' %}" class="btn btn-primary">Submit Issue</a>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends 'resolve/base.html' %}
+
+{% block title %}Issue Feed - MyCity Resolve{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-list text-primary"></i> Community Issues
+    </h2>
+    {% if user.is_authenticated %}
+    <a href="{% url 'submit_issue' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Submit New Issue
+    </a>
+    {% endif %}
+</div>
+
+{% if issues %}
+    <div class="row">
+        {% for issue in issues %}
+        <div class="col-lg-6 mb-4">
+            <div class="card issue-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">{{ issue.title }}</h5>
+                        <small class="text-muted">
+                            <i class="fas fa-user"></i> Citizen {{ issue.anonymous_user_id }}
+                        </small>
+                    </div>
+                    <span class="badge 
+                        {% if issue.status == 'solved' %}bg-success
+                        {% elif issue.status == 'pending_confirm' %}bg-warning
+                        {% else %}bg-primary{% endif %} status-badge">
+                        {{ issue.get_status_display }}
+                    </span>
+                </div>
+                
+                {% if issue.image %}
+                <img src="{{ issue.image }}" class="card-img-top" alt="Issue image" style="height: 200px; object-fit: cover;">
+                {% endif %}
+                
+                <div class="card-body">
+                    <p class="card-text">{{ issue.description|truncatewords:30 }}</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-user-tie"></i> Tagged: {{ issue.leader_tagged.name }}
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar"></i> {{ issue.created_at|date:"M d, Y" }}
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                <a href="https://www.google.com/maps?q={{ issue.latitude }},{{ issue.longitude }}" 
+                                   target="_blank" class="text-decoration-none">
+                                    View Location
+                                </a>
+                            </small>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted">
+                                <i class="fas fa-flag"></i> {{ issue.flag_count }} flags
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if issue.is_leader_resolved %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check"></i> Leader Resolved
+                                </span>
+                            {% endif %}
+                            {% if issue.is_user_confirmed %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-double"></i> User Confirmed
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            <button class="btn btn-sm btn-outline-danger flag-btn" 
+                                    onclick="flagIssue({{ issue.id }})" 
+                                    title="Flag as unsolved">
+                                <i class="fas fa-flag"></i> Flag
+                            </button>
+                            
+                            {% if user.is_authenticated and user == issue.user and issue.is_leader_resolved and not issue.is_user_confirmed %}
+                            <a href="{% url 'user_confirm' issue.id %}" 
+                               class="btn btn-sm btn-success">
+                                <i class="fas fa-check"></i> Confirm Resolved
+                            </a>
+                            {% endif %}
+                            
+                            {% if user.is_authenticated and hasattr.user.leader and user.leader == issue.leader_tagged and not issue.is_leader_resolved %}
+                            <a href="{% url 'leader_resolve' issue.id %}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="fas fa-tools"></i> Mark Resolved
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">No issues found</h4>
+        <p class="text-muted">Be the first to submit a community issue!</p>
+        {% if user.is_authenticated %}
+        <a href="{% url 'submit_issue' %}" class="btn btn-primary">Submit Issue</a>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function flagIssue(issueId) {
+    fetch(`/flag/${issueId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update flag count in UI
+            const flagElement = document.querySelector(`button[onclick="flagIssue(${issueId})"]`);
+            if (flagElement) {
+                const flagCount = flagElement.closest('.card').querySelector('.fa-flag').parentElement;
+                flagCount.textContent = `${data.flag_count} flags`;
+            }
+            
+            // Show success message
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-success alert-dismissible fade show';
+            alert.innerHTML = `
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('main').insertBefore(alert, document.querySelector('main').firstChild);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error flagging issue. Please try again.');
+    });
+}
+</script>
+{% endblock %}
