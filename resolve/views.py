@@ -6,6 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db.models import Q
 from django.conf import settings
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import login as auth_login
 from .models import Issue, Leader, CitizenProfile
 from .forms import IssueForm
 from .ai_utils import check_content_safety
@@ -14,6 +16,20 @@ from .ai_utils import check_content_safety
 def home(request):
     """Home page with links to main features"""
     return render(request, 'resolve/home.html')
+
+
+def signup(request):
+    """User self-service registration"""
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            auth_login(request, user)
+            messages.success(request, 'Welcome! Your account has been created.')
+            return redirect('home')
+    else:
+        form = UserCreationForm()
+    return render(request, 'resolve/signup.html', {'form': form})
 
 
 def issue_feed(request):
