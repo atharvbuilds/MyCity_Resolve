@@ -1,47 +1,79 @@
-<<<<<<< HEAD
 # MyCity Resolve
 
-A Django-based civic engagement platform that connects citizens with city leaders to resolve community issues through a two-step verification process.
+A Django-based civic engagement platform that connects citizens with city leaders to resolve community issues through a two-step verification process. Features include real-time chat, social interactions, and comprehensive issue tracking.
 
-## Features
+## Key Features
 
-- **Issue Submission**: Citizens can submit issues with photos and precise location data using Google Maps
-- **AI Content Moderation**: Automatic filtering of spam and inappropriate content
-- **Two-Step Resolution**: Leaders mark issues as resolved, citizens confirm the resolution
-- **Community Flagging**: Users can flag issues as unsolved for accountability
-- **Gamified Leaderboard**: Track which leaders are solving the most problems
-- **Anonymous Posting**: Citizens remain anonymous while maintaining accountability
-- **Admin Dashboard**: Full management interface for data oversight
+### Civic Engagement
+- **Issue Submission**: Submit issues with photos and precise location data
+- **Two-Step Resolution**: Leaders mark issues as resolved, citizens confirm
+- **Community Flagging**: Users can flag issues as unsolved
+- **Gamified Leaderboard**: Track leaders solving the most problems
 
-## Quick Start
+### Social Features
+- **User Profiles**: Customizable profiles with bio and stats
+- **Follow System**: Follow other users and leaders
+- **Real-time Chat**: Private messaging and group chats
+- **Activity Feed**: See updates from followed users
+- **Hashtags**: Organize and discover issues by topics
 
-### 1. Install Dependencies
+### Interactive Features
+- **Like & Comment**: Engage with posted issues
+- **Bookmarks**: Save important issues
+- **Real-time Updates**: Get instant notifications
+- **Explore Page**: Discover trending issues
+- **Anonymous Posting**: Optional anonymous submissions
+
+## Prerequisites
+
+- Python 3.13+
+- Django 5.2+
+- Redis (optional, for production)
+
+## Installation
+
+1. **Clone the repository**
 ```bash
-pip install Django Pillow
+git clone https://github.com/atharvbuilds/MyCity_Resolve.git
+cd MyCity_Resolve
 ```
 
-### 2. Run Migrations
+2. **Create a virtual environment** (recommended)
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+```
+
+3. **Install dependencies**
+```bash
+pip install -r requirements.txt
+```
+
+4. **Apply database migrations**
 ```bash
 python manage.py migrate
 ```
 
-### 3. Create Superuser
+5. **Create a superuser**
 ```bash
 python manage.py createsuperuser
 ```
 
-### 4. Load Sample Data
+6. **Load sample data** (optional)
 ```bash
 python manage.py load_sample_data
 ```
 
-### 5. Map Integration (No API Key Required!)
-The application uses OpenStreetMap with Leaflet.js - completely free with no API key required!
+## Running the Application
 
-### 6. Run Development Server
+1. **Start the development server**
 ```bash
 python manage.py runserver
 ```
+
+2. **Access the application**
+- Main site: http://127.0.0.1:8000/
+- Admin panel: http://127.0.0.1:8000/admin/
 
 Visit `http://127.0.0.1:8000` to see the application.
 
