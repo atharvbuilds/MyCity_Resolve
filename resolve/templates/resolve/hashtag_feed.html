@@ -1,0 +1,348 @@
+{% extends 'resolve/base.html' %}
+{% load static %}
+
+{% block title %}#{{ hashtag.name }} - Issues{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="hashtag-header mb-4">
+                <h1 class="display-5">#{{ hashtag.name }}</h1>
+                <p class="text-muted">{{ issues.count }} issues tagged</p>
+            </div>
+            
+            {% for issue in issues %}
+            <div class="card mb-4 issue-card" data-issue-id="{{ issue.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="user-info">
+                        <img src="{{ issue.user.citizenprofile.profile_picture.url|default:'/static/img/default-profile.png' }}" 
+                             alt="{{ issue.user.username }}" 
+                             class="rounded-circle"
+                             width="32" height="32">
+                        <a href="{% url 'profile' username=issue.user.username %}" 
+                           class="ms-2 text-decoration-none text-dark">
+                            {{ issue.user.username }}
+                        </a>
+                    </div>
+                    <small class="text-muted">
+                        {{ issue.created_at|timesince }} ago
+                    </small>
+                </div>
+                
+                {% if issue.image %}
+                <img src="{{ issue.image.url }}" alt="Issue Image" class="card-img-top">
+                {% endif %}
+                
+                <div class="card-body">
+                    <h5 class="card-title">{{ issue.title }}</h5>
+                    <p class="card-text">{{ issue.description|urlize|linebreaks }}</p>
+                    
+                    {% if issue.hashtags.exists %}
+                    <div class="hashtags mb-3">
+                        {% for tag in issue.hashtags.all %}
+                        <a href="{% url 'hashtag_view' tag_name=tag.name %}" 
+                           class="text-decoration-none">
+                            <span class="badge bg-light text-dark">#{{ tag.name }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="interaction-buttons d-flex gap-3">
+                        <button class="btn btn-outline-primary btn-sm like-button"
+                                data-issue-id="{{ issue.id }}"
+                                data-liked="{% if user in issue.likes.all %}true{% else %}false{% endif %}">
+                            <i class="bi {% if user in issue.likes.all %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                            <span class="like-count">{{ issue.likes.count }}</span>
+                        </button>
+                        
+                        <button class="btn btn-outline-secondary btn-sm bookmark-button"
+                                data-issue-id="{{ issue.id }}"
+                                data-bookmarked="{% if user in issue.bookmarks.all %}true{% else %}false{% endif %}">
+                            <i class="bi {% if user in issue.bookmarks.all %}bi-bookmark-fill{% else %}bi-bookmark{% endif %}"></i>
+                            <span class="bookmark-count">{{ issue.bookmarks.count }}</span>
+                        </button>
+                        
+                        <button class="btn btn-outline-success btn-sm comment-button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#comments-{{ issue.id }}">
+                            <i class="bi bi-chat"></i>
+                            <span class="comment-count">{{ issue.comments.count }}</span>
+                        </button>
+                    </div>
+                    
+                    <div class="collapse mt-3" id="comments-{{ issue.id }}">
+                        <div class="card card-body">
+                            <form class="comment-form mb-3" data-issue-id="{{ issue.id }}">
+                                {% csrf_token %}
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           placeholder="Add a comment..."
+                                           name="content"
+                                           required>
+                                    <button class="btn btn-primary" type="submit">Post</button>
+                                </div>
+                            </form>
+                            
+                            <div class="comments-container">
+                                {% for comment in issue.comments.all %}
+                                <div class="comment mb-2" id="comment-{{ comment.id }}">
+                                    <div class="d-flex gap-2">
+                                        <img src="{{ comment.user.citizenprofile.profile_picture.url|default:'/static/img/default-profile.png' }}" 
+                                             alt="{{ comment.user.username }}"
+                                             class="rounded-circle"
+                                             width="24" height="24">
+                                        <div class="comment-content">
+                                            <div class="fw-bold">{{ comment.user.username }}</div>
+                                            <p class="mb-1">{{ comment.content }}</p>
+                                            <small class="text-muted">{{ comment.created_at|timesince }} ago</small>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if comment.replies.exists %}
+                                    <div class="replies ms-4 mt-2">
+                                        {% for reply in comment.replies.all %}
+                                        <div class="reply mb-2" id="reply-{{ reply.id }}">
+                                            <div class="d-flex gap-2">
+                                                <img src="{{ reply.user.citizenprofile.profile_picture.url|default:'/static/img/default-profile.png' }}" 
+                                                     alt="{{ reply.user.username }}"
+                                                     class="rounded-circle"
+                                                     width="20" height="20">
+                                                <div class="reply-content">
+                                                    <div class="fw-bold">{{ reply.user.username }}</div>
+                                                    <p class="mb-1">{{ reply.content }}</p>
+                                                    <small class="text-muted">{{ reply.created_at|timesince }} ago</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <button class="btn btn-link btn-sm py-0 reply-button" 
+                                            data-comment-id="{{ comment.id }}">
+                                        Reply
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="alert alert-info">No issues found with this hashtag yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle likes
+    document.querySelectorAll('.like-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const issueId = this.dataset.issueId;
+            fetch(`/like/${issueId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const icon = this.querySelector('i');
+                const count = this.querySelector('.like-count');
+                
+                if (data.liked) {
+                    icon.classList.replace('bi-heart', 'bi-heart-fill');
+                } else {
+                    icon.classList.replace('bi-heart-fill', 'bi-heart');
+                }
+                count.textContent = data.like_count;
+            });
+        });
+    });
+    
+    // Handle bookmarks
+    document.querySelectorAll('.bookmark-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const issueId = this.dataset.issueId;
+            fetch(`/bookmark/${issueId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const icon = this.querySelector('i');
+                const count = this.querySelector('.bookmark-count');
+                
+                if (data.bookmarked) {
+                    icon.classList.replace('bi-bookmark', 'bi-bookmark-fill');
+                } else {
+                    icon.classList.replace('bi-bookmark-fill', 'bi-bookmark');
+                }
+                count.textContent = data.bookmark_count;
+            });
+        });
+    });
+    
+    // Handle comments
+    document.querySelectorAll('.comment-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const issueId = this.dataset.issueId;
+            const input = this.querySelector('input[name=content]');
+            
+            fetch(`/comment/${issueId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'content': input.value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const container = this.closest('.card-body')
+                        .querySelector('.comments-container');
+                    
+                    // Create new comment element
+                    const commentDiv = document.createElement('div');
+                    commentDiv.className = 'comment mb-2';
+                    commentDiv.id = `comment-${data.comment_id}`;
+                    commentDiv.innerHTML = `
+                        <div class="d-flex gap-2">
+                            <img src="/static/img/default-profile.png" 
+                                 alt="${data.username}"
+                                 class="rounded-circle"
+                                 width="24" height="24">
+                            <div class="comment-content">
+                                <div class="fw-bold">${data.username}</div>
+                                <p class="mb-1">${data.content}</p>
+                                <small class="text-muted">just now</small>
+                            </div>
+                        </div>
+                        <button class="btn btn-link btn-sm py-0 reply-button" 
+                                data-comment-id="${data.comment_id}">
+                            Reply
+                        </button>
+                    `;
+                    
+                    // Add new comment to the container
+                    container.insertBefore(commentDiv, container.firstChild);
+                    
+                    // Clear input
+                    input.value = '';
+                    
+                    // Update comment count
+                    const commentButton = document.querySelector(
+                        `.comment-button[data-bs-target="#comments-${issueId}"]`
+                    );
+                    const countSpan = commentButton.querySelector('.comment-count');
+                    countSpan.textContent = parseInt(countSpan.textContent) + 1;
+                }
+            });
+        });
+    });
+    
+    // Handle reply buttons
+    document.querySelectorAll('.reply-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const commentId = this.dataset.commentId;
+            const comment = document.getElementById(`comment-${commentId}`);
+            
+            // Remove any existing reply forms
+            const existingForm = comment.querySelector('.reply-form');
+            if (existingForm) {
+                existingForm.remove();
+                return;
+            }
+            
+            // Create reply form
+            const replyForm = document.createElement('form');
+            replyForm.className = 'reply-form mt-2 ms-4';
+            replyForm.innerHTML = `
+                <div class="input-group input-group-sm">
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Write a reply..."
+                           name="content"
+                           required>
+                    <button class="btn btn-primary" type="submit">Reply</button>
+                </div>
+            `;
+            
+            // Add form after the reply button
+            this.after(replyForm);
+            
+            // Handle reply submission
+            replyForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const input = this.querySelector('input[name=content]');
+                
+                fetch(`/reply/${commentId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        'content': input.value
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        let repliesContainer = comment.querySelector('.replies');
+                        
+                        // Create replies container if it doesn't exist
+                        if (!repliesContainer) {
+                            repliesContainer = document.createElement('div');
+                            repliesContainer.className = 'replies ms-4 mt-2';
+                            comment.querySelector('.comment-content').after(repliesContainer);
+                        }
+                        
+                        // Create new reply element
+                        const replyDiv = document.createElement('div');
+                        replyDiv.className = 'reply mb-2';
+                        replyDiv.id = `reply-${data.reply_id}`;
+                        replyDiv.innerHTML = `
+                            <div class="d-flex gap-2">
+                                <img src="/static/img/default-profile.png" 
+                                     alt="${data.username}"
+                                     class="rounded-circle"
+                                     width="20" height="20">
+                                <div class="reply-content">
+                                    <div class="fw-bold">${data.username}</div>
+                                    <p class="mb-1">${data.content}</p>
+                                    <small class="text-muted">just now</small>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Add new reply to the container
+                        repliesContainer.insertBefore(replyDiv, repliesContainer.firstChild);
+                        
+                        // Remove the reply form
+                        replyForm.remove();
+                    }
+                });
+            });
+            
+            // Focus on the input
+            replyForm.querySelector('input').focus();
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

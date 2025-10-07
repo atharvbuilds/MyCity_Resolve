@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
 from .models import Issue, Leader, CitizenProfile
+from .models import ChatRoom, ChatMessage
 
 
 class IssueAdmin(admin.ModelAdmin):
@@ -27,7 +28,23 @@ class CitizenProfileAdmin(admin.ModelAdmin):
     readonly_fields = ['created_at', 'updated_at']
 
 
+# Chat admin models
+class ChatRoomAdmin(admin.ModelAdmin):
+    list_display = ['name', 'is_group_chat', 'creator', 'created_at']
+    list_filter = ['is_group_chat', 'created_at']
+    search_fields = ['name', 'creator__username']
+    filter_horizontal = ['participants']
+    readonly_fields = ['created_at', 'updated_at']
+
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ['sender', 'room', 'content', 'is_read', 'created_at']
+    list_filter = ['created_at', 'room', 'is_read']
+    search_fields = ['content', 'sender__username']
+    readonly_fields = ['created_at']
+
 # Register models
 admin.site.register(Issue, IssueAdmin)
 admin.site.register(Leader, LeaderAdmin)
 admin.site.register(CitizenProfile, CitizenProfileAdmin)
+admin.site.register(ChatRoom, ChatRoomAdmin)
+admin.site.register(ChatMessage, ChatMessageAdmin)

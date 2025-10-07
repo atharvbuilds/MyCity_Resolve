@@ -1,0 +1,174 @@
+{% extends 'resolve/base.html' %}
+{% load static %}
+
+{% block title %}Explore Issues{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Trending Issues -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Trending Issues</h4>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for issue in trending_issues %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <div class="d-flex">
+                                <img src="{{ issue.user.citizenprofile.profile_picture.url|default:'/static/img/default-profile.png' }}" 
+                                     alt="{{ issue.user.username }}"
+                                     class="rounded-circle me-2"
+                                     width="48" height="48">
+                                <div>
+                                    <h5 class="mb-1">{{ issue.title }}</h5>
+                                    <p class="mb-1">{{ issue.description|truncatewords:30 }}</p>
+                                    
+                                    {% if issue.hashtags.exists %}
+                                    <div class="hashtags">
+                                        {% for tag in issue.hashtags.all %}
+                                        <a href="{% url 'hashtag_view' tag_name=tag.name %}" 
+                                           class="text-decoration-none">
+                                            <span class="badge bg-light text-dark">#{{ tag.name }}</span>
+                                        </a>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <small class="text-muted">
+                                        Posted by {{ issue.user.username }} • 
+                                        {{ issue.likes.count }} likes • 
+                                        {{ issue.comments.count }} comments •
+                                        {{ issue.created_at|timesince }} ago
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center">
+                        No trending issues at the moment.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Recent Issues -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="mb-0">Recent Issues</h4>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for issue in recent_issues %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <div class="d-flex">
+                                <img src="{{ issue.user.citizenprofile.profile_picture.url|default:'/static/img/default-profile.png' }}" 
+                                     alt="{{ issue.user.username }}"
+                                     class="rounded-circle me-2"
+                                     width="48" height="48">
+                                <div>
+                                    <h5 class="mb-1">{{ issue.title }}</h5>
+                                    <p class="mb-1">{{ issue.description|truncatewords:30 }}</p>
+                                    
+                                    {% if issue.hashtags.exists %}
+                                    <div class="hashtags">
+                                        {% for tag in issue.hashtags.all %}
+                                        <a href="{% url 'hashtag_view' tag_name=tag.name %}" 
+                                           class="text-decoration-none">
+                                            <span class="badge bg-light text-dark">#{{ tag.name }}</span>
+                                        </a>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <small class="text-muted">
+                                        Posted by {{ issue.user.username }} • 
+                                        {{ issue.likes.count }} likes • 
+                                        {{ issue.comments.count }} comments •
+                                        {{ issue.created_at|timesince }} ago
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center">
+                        No recent issues found.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Search -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Search Issues</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get">
+                        <div class="input-group">
+                            <input type="text" 
+                                   name="q" 
+                                   class="form-control" 
+                                   placeholder="Search issues..."
+                                   value="{{ request.GET.q|default:'' }}">
+                            <button class="btn btn-primary" type="submit">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Trending Hashtags -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Trending Hashtags</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for hashtag in trending_hashtags %}
+                    <a href="{% url 'hashtag_view' tag_name=hashtag.name %}" 
+                       class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        #{{ hashtag.name }}
+                        <span class="badge bg-primary rounded-pill">{{ hashtag.issue_count }}</span>
+                    </a>
+                    {% empty %}
+                    <div class="list-group-item text-center">
+                        No trending hashtags yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Popular Users -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Active Citizens</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for profile in active_users %}
+                    <div class="list-group-item">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ profile.profile_picture.url|default:'/static/img/default-profile.png' }}" 
+                                 alt="{{ profile.user.username }}"
+                                 class="rounded-circle me-2"
+                                 width="32" height="32">
+                            <div>
+                                <div class="fw-bold">{{ profile.user.username }}</div>
+                                <small class="text-muted">{{ profile.issue_count }} issues</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="list-group-item text-center">
+                        No active citizens yet.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

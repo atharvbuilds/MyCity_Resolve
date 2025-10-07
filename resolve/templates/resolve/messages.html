@@ -1,0 +1,457 @@
+{% extends 'resolve/base.html' %}
+{% load static %}
+
+{% block title %}Messages{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-container {
+    height: calc(100vh - 200px);
+    display: flex;
+}
+
+.chat-sidebar {
+    width: 300px;
+    border-right: 1px solid #dee2e6;
+    overflow-y: auto;
+}
+
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.message-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.message-input {
+    border-top: 1px solid #dee2e6;
+    padding: 1rem;
+}
+
+.chat-room {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    cursor: pointer;
+}
+
+.chat-room:hover {
+    background-color: #f8f9fa;
+}
+
+.chat-room.active {
+    background-color: #e9ecef;
+}
+
+.message {
+    margin-bottom: 1rem;
+    max-width: 70%;
+}
+
+.message.sent {
+    margin-left: auto;
+}
+
+.message.received {
+    margin-right: auto;
+}
+
+.message-content {
+    padding: 0.5rem 1rem;
+    border-radius: 1rem;
+}
+
+.sent .message-content {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.received .message-content {
+    background-color: #f1f3f5;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="chat-container">
+        <!-- Chat Sidebar -->
+        <div class="chat-sidebar">
+            <div class="p-3 border-bottom">
+                <button type="button" 
+                        class="btn btn-primary w-100" 
+                        data-bs-toggle="modal" 
+                        data-bs-target="#newChatModal">
+                    New Message
+                </button>
+            </div>
+
+            <div class="chat-rooms">
+                {% for room in chat_rooms %}
+                <div class="chat-room {% if room.id == active_room.id %}active{% endif %}" 
+                     data-room-id="{{ room.id }}">
+                    <img src="{{ room.get_avatar_url }}" 
+                         alt="{{ room.get_name_for_user }}" 
+                         class="rounded-circle me-2"
+                         width="40" height="40">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">{{ room.get_name_for_user }}</div>
+                        {% if room.latest_message %}
+                        <small class="text-muted">{{ room.latest_message.content|truncatechars:30 }}</small>
+                        {% endif %}
+                    </div>
+                    {% if room.unread_count %}
+                    <span class="badge bg-primary rounded-pill">{{ room.unread_count }}</span>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="text-center p-3 text-muted">
+                    No messages yet
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Chat Main -->
+        <div class="chat-main">
+            {% if active_room %}
+            <div class="p-3 border-bottom">
+                <div class="d-flex align-items-center">
+                    <img src="{{ active_room.get_avatar_url }}" 
+                         alt="{{ active_room.get_name_for_user }}" 
+                         class="rounded-circle me-2"
+                         width="40" height="40">
+                    <div class="flex-grow-1">
+                        <div class="fw-bold">{{ active_room.get_name_for_user }}</div>
+                        {% if active_room.is_group_chat %}
+                        <small class="text-muted">{{ active_room.participants.count }} members</small>
+                        {% endif %}
+                    </div>
+                    {% if active_room.is_group_chat %}
+                    <button type="button" 
+                            class="btn btn-outline-secondary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#groupInfoModal">
+                        Group Info
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="message-list" id="messageList">
+                {% for message in messages %}
+                <div class="message {% if message.sender == request.user %}sent{% else %}received{% endif %}">
+                    {% if not message.sender == request.user %}
+                    <small class="text-muted">{{ message.sender.username }}</small>
+                    {% endif %}
+                    <div class="message-content">
+                        {{ message.content }}
+                        {% if message.file_attachment %}
+                        <div class="mt-2">
+                            <a href="{{ message.file_attachment.url }}" 
+                               class="btn btn-sm btn-light" 
+                               download>
+                                <i class="bi bi-download"></i>
+                                Download Attachment
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="message-time">
+                        {{ message.created_at|date:"g:i A" }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="message-input">
+                <form id="messageForm" class="d-flex gap-2" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="file" 
+                           id="fileInput" 
+                           class="form-control" 
+                           style="display: none;"
+                           accept="image/*,application/pdf">
+                    <button type="button" 
+                            class="btn btn-outline-secondary" 
+                            onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-paperclip"></i>
+                    </button>
+                    <input type="text" 
+                           class="form-control" 
+                           placeholder="Type a message..."
+                           id="messageInput"
+                           required>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="d-flex align-items-center justify-content-center h-100">
+                <div class="text-center">
+                    <h4>Select a conversation</h4>
+                    <p class="text-muted">Choose from existing conversations or start a new one</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- New Chat Modal -->
+<div class="modal fade" id="newChatModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="isGroupChat">
+                        <label class="form-check-label" for="isGroupChat">
+                            Create Group Chat
+                        </label>
+                    </div>
+                </div>
+                
+                <div id="groupNameField" style="display: none;" class="mb-3">
+                    <label for="groupName" class="form-label">Group Name</label>
+                    <input type="text" class="form-control" id="groupName">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Select Recipients</label>
+                    <select class="form-select" multiple id="recipients" style="height: 200px;">
+                        {% for user in available_users %}
+                        <option value="{{ user.id }}">{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="createChat">Create Chat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Group Info Modal -->
+<div class="modal fade" id="groupInfoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Group Info</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Members</h6>
+                <ul class="list-group">
+                    {% for participant in active_room.participants.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ participant.username }}
+                        {% if active_room.creator == request.user and participant != request.user %}
+                        <button class="btn btn-sm btn-danger remove-member" 
+                                data-user-id="{{ participant.id }}">
+                            Remove
+                        </button>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                {% if active_room.creator == request.user %}
+                <div class="mt-3">
+                    <h6>Add Members</h6>
+                    <select class="form-select" id="newMembers" multiple>
+                        {% for user in available_users %}
+                        {% if user not in active_room.participants.all %}
+                        <option value="{{ user.id }}">{{ user.username }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-primary mt-2" id="addMembers">Add Selected Members</button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+// Make Django template variables available to JavaScript
+const currentUserId = {{ request.user.id }};
+const activeRoomId = {% if active_room %}{{ active_room.id }}{% else %}null{% endif %};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const chatSocket = new WebSocket(
+        'ws://' + window.location.host + '/ws/chat/' + (activeRoomId || 0) + '/'
+    );
+
+    chatSocket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        
+        if (data.type === 'chat_message') {
+            appendMessage(data);
+            scrollToBottom();
+        }
+    };
+
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+    const fileInput = document.getElementById('fileInput');
+    const messageList = document.getElementById('messageList');
+
+    function appendMessage(data) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${data.sender_id === currentUserId ? 'sent' : 'received'}`;
+        
+        if (data.sender_id !== currentUserId) {
+            const senderName = document.createElement('small');
+            senderName.className = 'text-muted';
+            senderName.textContent = data.sender_username;
+            messageDiv.appendChild(senderName);
+        }
+
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = data.message;
+
+        if (data.file_url) {
+            const fileLink = document.createElement('a');
+            fileLink.href = data.file_url;
+            fileLink.className = 'btn btn-sm btn-light mt-2';
+            fileLink.download = '';
+            fileLink.innerHTML = '<i class="bi bi-download"></i> Download Attachment';
+            contentDiv.appendChild(fileLink);
+        }
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+        messageDiv.appendChild(contentDiv);
+        messageDiv.appendChild(timeDiv);
+        messageList.appendChild(messageDiv);
+    }
+
+    function scrollToBottom() {
+        messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    if (messageForm) {
+        messageForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData();
+            formData.append('message', messageInput.value);
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+
+            fetch(`/chat/${activeRoomId}/send/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: formData
+            }).then(response => {
+                if (response.ok) {
+                    messageInput.value = '';
+                    fileInput.value = '';
+                }
+            });
+        });
+    }
+
+    // Show group name field when creating group chat
+    document.getElementById('isGroupChat').addEventListener('change', function() {
+        document.getElementById('groupNameField').style.display = 
+            this.checked ? 'block' : 'none';
+    });
+
+    // Create new chat
+    document.getElementById('createChat').addEventListener('click', function() {
+        const isGroupChat = document.getElementById('isGroupChat').checked;
+        const groupName = document.getElementById('groupName').value;
+        const recipients = Array.from(document.getElementById('recipients').selectedOptions)
+            .map(option => option.value);
+
+        fetch('/chat/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: JSON.stringify({
+                is_group_chat: isGroupChat,
+                name: groupName,
+                participants: recipients
+            })
+        }).then(response => {
+            if (response.ok) {
+                window.location.reload();
+            }
+        });
+    });
+
+    // Handle group member management
+    if (activeRoomId) {
+        document.getElementById('addMembers')?.addEventListener('click', function() {
+            const newMembers = Array.from(document.getElementById('newMembers').selectedOptions)
+                .map(option => option.value);
+
+            fetch(`/chat/${activeRoomId}/add_members/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+                body: JSON.stringify({
+                    members: newMembers
+                })
+            }).then(response => {
+                if (response.ok) {
+                    window.location.reload();
+                }
+            });
+        });
+
+        document.querySelectorAll('.remove-member').forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+
+                fetch(`/chat/${activeRoomId}/remove_member/${userId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                });
+            });
+        });
+    }
+
+    // Initial scroll to bottom
+    if (messageList) {
+        scrollToBottom();
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

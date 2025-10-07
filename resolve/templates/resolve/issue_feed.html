@@ -35,7 +35,7 @@
                 </div>
                 
                 {% if issue.image %}
-                <img src="{{ issue.image }}" class="card-img-top" alt="Issue image" style="height: 200px; object-fit: cover;">
+                <img src="{{ issue.image.url }}" class="card-img-top" alt="Issue image" style="height: 200px; object-fit: cover;">
                 {% endif %}
                 
                 <div class="card-body">
@@ -48,6 +48,21 @@
                             </small>
                         </div>
                         <div class="col-6">
+                            {% if user.is_authenticated and issue.distance %}
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                {% if issue.distance < 0.1 %}
+                                    Very Close
+                                {% elif issue.distance < 0.5 %}
+                                    Nearby
+                                {% elif issue.distance < 1 %}
+                                    In Your Area
+                                {% else %}
+                                    {{ issue.distance|floatformat:1 }} units away
+                                {% endif %}
+                            </small>
+                            {% endif %}
+                        </div>
                             <small class="text-muted">
                                 <i class="fas fa-calendar"></i> {{ issue.created_at|date:"M d, Y" }}
                             </small>
